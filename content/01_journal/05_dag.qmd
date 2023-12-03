@@ -5,3 +5,82 @@ title: "Directed Acyclic Graphs"
 ::: callout-note
 You can delete everything in here and start fresh.
 :::
+
+* Think about example from previous chapter (parking spots) and draw the DAG.
+
+We take the variables as follows
+* X is the Parking spots
+* Y is the Sales
+* Z is the Location
+
+We make the folloing assumption for the dependancies,
+* X and Z: Dependant, Location affects the size of the parking spots
+* Z and Y: Dependant, Location affects the Sales
+* X and Y, conditional on Z: Dependant as the size of the parking lot affects
+sales in a fixed location
+```{r}
+
+library(dagitty)
+library(ggdag)
+library(ggplot2)
+# Chain
+chain <- dagify(
+    X ~ Z,
+    Y ~ Z,
+    Y ~ X,
+    coords = list(x = c(Y = 3, Z = 2, X = 1),
+                  y = c(Y = 0, Z = 1, X = 0)),
+    labels = list(X = "Parking Spots",
+                Y = "Sales", 
+                Z = "Location")
+)
+
+# Plot DAG
+ggdag(chain) +
+    geom_dag_point(color = "red") +
+    geom_dag_text(color = "white") +
+    geom_dag_edges(edge_color = "black")+
+    geom_dag_label_repel(aes(label = label))
+```
+
+* In the data, you find three variables: satisfaction, follow_ups and subscription. Perform the     following steps:
+
+  + regress satisfaction on follow_ups
+
+  + regress satisfaction on follow_ups and account for subscription
+  
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(dplyr)
+df <- readRDS("C:/Users/Sandipan Mukherjee/Documents/GitHub/cdsba-msandipan/Causal_Data_Science_Data/customer_sat.rds")
+
+# Not Conditioned
+lm_1<-lm(satisfaction ~ follow_ups,data=df)
+print("Not conditioned coefficients:")
+lm_1$coefficients
+#Plot
+lm_not_cond <- ggplot(df, aes(x = follow_ups, y = satisfaction ))+
+  geom_point()+
+  stat_smooth(method = "lm", se = F)
+lm_not_cond
+
+#Conditioned
+lm_2<-lm(satisfaction ~ follow_ups,data=df[df$subscription == "Elite", ])
+lm_3<-lm(satisfaction ~ follow_ups,data=df[df$subscription == "Premium", ])
+lm_4<-lm(satisfaction ~ follow_ups,data=df[df$subscription == "Premium+", ])
+print("Conditioned coefficients accounting for Elite:")
+lm_2$coefficients
+print("Conditioned coefficients accounting for Premium:")
+lm_3$coefficients
+print("Conditioned coefficients accounting for Premium+:")
+lm_4$coefficients
+#Plot
+lm_cond <- ggplot(df, aes(x = follow_ups, y = satisfaction,color= subscription ))+ geom_point()+stat_smooth(method = "lm", se = F)
+lm_cond
+
+
+```
+  
+
+
