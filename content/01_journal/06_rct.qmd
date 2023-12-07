@@ -5,3 +5,76 @@ title: "Randomized Controlled Trials"
 ::: callout-note
 You can delete everything in here and start fresh.
 :::
+
+-   Check whether the covariates are balanced across the groups. Use a plot to show it.
+
+The covariates are the mobile device users and previous visits of users.
+
+```{r include=FALSE}
+library(ggplot2)
+library(tidyverse)
+```
+
+```{r echo=TRUE}
+
+df <- readRDS("~/GitHub/cdsba-msandipan/Causal_Data_Science_Data/abtest_online.rds")
+
+compare_visits <-  
+    ggplot(df, 
+           aes(x = chatbot, 
+               y = previous_visit, 
+               )) +
+    stat_summary(geom = "errorbar", 
+                 width = .5,
+                 fun.data = "mean_se", 
+                 fun.args = list(mult=1.96),
+                 show.legend = F)
+  
+df$mobile_device_int<-as.integer(as.logical(df$mobile_device))
+
+compare_devices <-  
+    ggplot(df, 
+           aes(x = chatbot, 
+               y = mobile_device_int, 
+               )) +
+    stat_summary(geom = "errorbar", 
+                 width = .5,
+                 fun.data = "mean_se", 
+                 fun.args = list(mult=1.96),
+                 show.legend = F)
+  
+compare_visits
+compare_devices
+
+
+```
+
+-   Run a regression to find the effect of chatbot on sales. Both Purchase and Purchase amount show a negative correlation with the usage of chatbots
+
+```{r echo=TRUE}
+
+lm_purchase <- lm(purchase ~ chatbot, data = df)
+lm_purchase_amt <- lm(purchase_amount ~ chatbot, data = df)
+
+summary(lm_purchase)
+summary(lm_purchase_amt)
+
+```
+
+-   Find subgroup-specific effects by including an interaction. Compute a CATE for one exemplary group. A subgroup could be for example mobile users.
+
+```{r echo=TRUE}
+
+lm_mobile <- lm(purchase_amount ~ chatbot*mobile_device, data = df)
+summary(lm_mobile)
+```
+
+-   It's not only of interest how much customers buy but also if the buy at all. Then, the dependent variable is binary (either 0 or 1) instead of continuous and the model of choice is the logistic regression. Use the outcome variable purchase and run a logistic regression. The coefficients are not as easily interpretable as before. Look it up and interpret the coefficient for chatbot.
+
+Due to usage of Chatbot being a categorial variable, the coefficient of Chatbot False is 0.49597 and the coefficient for Chatbot True is 0.26786.
+
+```{r echo=TRUE}
+
+lm_purchase <- lm(purchase ~ chatbot, data = df)
+summary(lm_purchase)
+```
