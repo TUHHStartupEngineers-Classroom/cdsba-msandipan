@@ -2,6 +2,85 @@
 title: "Matching and Subclassification"
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+-   Check the relationships between the variables and draw a DAG as you understand the relations.
+
+```{r include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(dagitty)
+library(ggdag)
+library(MatchIt)
+```
+
+```{r}
+#Check Correlation
+df <- readRDS("~/GitHub/cdsba-msandipan/Causal_Data_Science_Data/membership.rds")
+df %>%
+     cor() %>% 
+     round(2) %>% 
+     Matrix::tril()
+#DAG Graph
+dag_model <- dagify(avg_purch~card,
+                    pre_avg_purch~age, 
+                    card~age,
+                    card~pre_avg_purch,
+                    avg_purch~age,
+                    avg_purch~pre_avg_purch,
+                    labels = c(
+                    "card" = "Card",
+                    "avg_purch" = "Avg_purch",
+                    "age"="age",
+                    "pre_avg_purch" = "Pre_Avg_purch",
+                    "sex"="sex"),
+                    exposure = "card",
+                    outcome = "avg_purch")
+ggdag(dag_model, text = FALSE, use_labels = "label")
+
+```
+
+-   Compute a naive estimate of the average treatment effect.
+
+```{r}
+lm_naive<-lm(avg_purch~card,data=df)
+summary(lm_naive)
+```
+
+-   Use the following matching methods to obtain more precise estimates:
+
+    -   (Coarsened) Exact Matching.
+
+    ```{r}
+    cem = matchit(card~age+pre_avg_purch,
+                  data=df,
+                  method='cem',
+                  estimant='ATE')
+    df_cem<-match.data(cem)
+    lm_cem<-lm(avg_purch~card,data=df_cem,weights=weights)
+    summary(lm_cem)
+    ```
+
+    -   Nearest-Neighbor Matching
+
+    ```{r}
+    nn = matchit(card~age+pre_avg_purch,
+                  data=df,
+                  method="nearest",
+                  distance = "mahalanobis",
+                  replace = T )
+    df_nn<-match.data(nn)
+    lm_nn<-lm(avg_purch~card,data=df_nn,weights=weights)
+    summary(lm_nn)
+    ```
+
+    -   Inverse Probability Weighting.
+
+    ```{r}
+    model_prop = glm(card~age+pre_avg_purch,
+                  data=df,
+                  family = binomial(link = "logit") )
+    df_aug <- df %>% mutate(propensity = predict(model_prop, type = "response"))
+    df_ipw <- df_aug %>% mutate(
+      ipw = (card/propensity) + ((1-card) / (1-propensity)))
+    lm_ipw<-lm(avg_purch~card,data=df_ipw,weights=ipw)
+    summary(lm_ipw)
+    ```
