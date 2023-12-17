@@ -2,6 +2,49 @@
 title: "Difference-in-Differences"
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+
+```{r include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(dagitty)
+library(ggdag)
+library(MatchIt)
+```
+
+* Manually computing the mean satisfaction for treated and control hospitals before and after the treatment
+```{r}
+#Check Correlation
+df <- readRDS("~/GitHub/cdsba-msandipan/Causal_Data_Science_Data/hospdd.rds")
+
+df_rep<-df
+hosp<-unique(df$hospital)
+df_rep$hospital<-replace(df$hospital,df$hospital %in% sample(hosp,18),0)
+df_rep$hospital<-replace(df_rep$hospital,df_rep$hospital!=0,1)
+
+before_control <- df_rep %>%
+  filter(procedure == 0,hospital==0) %>%pull(satis)
+before_treatment <- df_rep %>%
+  filter(procedure == 0,hospital==1) %>%pull(satis)
+
+after_control <- df_rep %>%
+  filter(procedure == 1,hospital==0) %>%pull(satis)
+after_treatment <- df_rep %>%
+  filter(procedure == 1,hospital==1) %>%pull(satis)
+
+diff_control <- mean(before_control) - mean(after_control)
+diff_treatment <- mean(before_treatment) - mean(after_treatment)
+
+diff_diff<-diff_treatment-diff_control
+```
+
+* Using a linear regression to compute the estimate. Also, include group and time fixed effects in the regression, i.e. one regressor for each month and one regressor for each hospital:
+```{r}
+lm_1<-lm(satis~procedure*hospital,data=df_rep)
+summary(lm_1)
+lm_2<-lm(satis~procedure*(hospital+month),data=df_rep)
+summary(lm_2)
+lm_3<-lm(satis~procedure*(as.factor(hospital)+as.factor(month)),data=df_rep)
+summary(lm_3)
+
+```
+Inclusion of the second method would be beneficial as the inclusion of the third method leads to 3 coefficients not defined because of singularities.
