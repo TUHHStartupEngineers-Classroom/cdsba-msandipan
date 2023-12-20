@@ -2,6 +2,51 @@
 title: "Regression Discontinuity"
 ---
 
-::: callout-note
-You can delete everything in here and start fresh.
-:::
+```{r include=FALSE}
+library(ggplot2)
+library(tidyverse)
+library(dagitty)
+library(ggdag)
+library(rddensity)
+library(dplyr)
+```
+
+-   For the first assignment, use the data from the just discussed application (coupon.rds). When conducting a regression discontinuity design, one parameter that is chosen somehow arbitrarily is the bandwidth. Check how sensitive the result is to changing the bandwidth by running the analysis
+    -   with half the bandwidth
+    -   with double the bandwidth
+
+```{r}
+coupon <- readRDS("~/GitHub/cdsba-msandipan/Causal_Data_Science_Data/coupon.rds")
+df<-coupon
+c0 = 60
+bw <- c0 + c(-10, 10)
+df_bw_below <- df %>% filter(days_since_last >= bw[1] & days_since_last < c0)
+df_bw_above <- df %>% filter(days_since_last >= c0 & days_since_last <= bw[2])
+df_bw <- bind_rows(df_bw_above, df_bw_below)
+dim(df_bw)
+
+lm_bw <- lm(purchase_after ~ days_since_last_centered + coupon, df_bw)
+summary(lm_bw)
+
+bw <- c0 + c(-2, 2)
+df_bw_below <- df %>% filter(days_since_last >= bw[1] & days_since_last < c0)
+df_bw_above <- df %>% filter(days_since_last >= c0 & days_since_last <= bw[2])
+df_bw <- bind_rows(df_bw_above, df_bw_below)
+dim(df_bw)
+
+lm_bw <- lm(purchase_after ~ days_since_last_centered + coupon, df_bw)
+summary(lm_bw)
+```
+
+-   Now consider a different past campaign. For a limited amount of time, for purchases with a total amount of more than 30€ you offered free shipping. The data can be seen in shipping.rds. Have a look at the variable purchase_amount and argue whether it could generally be used as a running variable with a cut-off at 30€.
+
+    -   Use a plot to confirm your argument.
+
+We see that the p-values displayed is 0 which indicates it is a value smaller than 2\^-18 indicating that the null hypothesis that number on either side are different is false. This is also represented in the graph
+
+```{r}
+shipping <- readRDS("~/GitHub/cdsba-msandipan/Causal_Data_Science_Data/shipping.rds")
+rddd <- rddensity(shipping$purchase_amount, c = 30)
+summary(rddd)
+rdd_plot <- rdplotdensity(rddd, shipping$purchase_amount, plotN = 100)
+```
